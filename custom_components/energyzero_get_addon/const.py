@@ -30,6 +30,7 @@ CONF_TODAY_ATTEMPTS: Final = "today_attempts"
 CONF_TOMORROW_ATTEMPTS: Final = "tomorrow_attempts"
 CONF_RETRY_DELAY: Final = "retry_delay"
 CONF_TOMORROW_AFTER: Final = "tomorrow_after"
+# Minimum hours of a day covered by prices (key kept for compatibility)
 CONF_MIN_ENTRIES: Final = "min_entries"
 
 PER_TYPE_OPTIONS: Final = (

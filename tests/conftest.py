@@ -34,16 +34,37 @@ class FakeEnergyZero:
         self.available_days: set[date] | None = None  # None = every day
 
     def prices(self, service: str, day: date) -> dict[str, Any]:
-        base = 0.20 if service == "get_energy_prices" else 1.10
         start = dt_util.start_of_local_day(day)
+        if service == "get_gas_prices":
+            # Gas days run 06:00-06:00: return the two that overlap ``day``
+            return {
+                "prices": [
+                    self._entry(
+                        start + timedelta(days=offset, hours=6),
+                        timedelta(days=1),
+                        round(1.10 + (day + timedelta(days=offset)).day / 100, 4),
+                    )
+                    for offset in (-1, 0)
+                ]
+            }
         return {
             "prices": [
-                {
-                    "timestamp": str(dt_util.as_utc(start + timedelta(hours=hour))),
-                    "price": round(base + hour / 100, 4),
-                }
+                self._entry(
+                    start + timedelta(hours=hour),
+                    timedelta(hours=1),
+                    round(0.20 + hour / 100, 4),
+                )
                 for hour in range(24)
             ]
+        }
+
+    @staticmethod
+    def _entry(start, length: timedelta, price: float) -> dict[str, Any]:
+        return {
+            "price": price,
+            "timestamp": str(dt_util.as_utc(start)),
+            "start": str(dt_util.as_utc(start)),
+            "end": str(dt_util.as_utc(start + length)),
         }
 
     def handler(self, service: str):

@@ -46,8 +46,17 @@ async def test_prices_today_and_tomorrow(
         "price": 0.3,
     }
     gas = hass.states.get(GAS)
-    assert float(gas.state) == pytest.approx(1.10 + 0.15 + 0.5)
+    assert float(gas.state) == pytest.approx(1.11 + 0.5)
     assert gas.attributes["unit_of_measurement"] == "€/m³"
+    # Gas days run 06:00-06:00, so each list holds the two overlapping gas days
+    assert [p["time"] for p in gas.attributes["prices_today"]] == [
+        "2026-10-31T06:00:00+01:00",
+        "2026-11-01T06:00:00+01:00",
+    ]
+    assert [p["time"] for p in gas.attributes["prices_tomorrow"]] == [
+        "2026-11-01T06:00:00+01:00",
+        "2026-11-02T06:00:00+01:00",
+    ]
 
     electricity_call = next(c for s, c in fake.calls if s == "get_energy_prices")
     assert electricity_call["incl_vat"] is True
@@ -242,4 +251,55 @@ async def test_options_flow(
     assert addon_entry.options["gas_min_entries"] == 20
     assert addon_entry.options["electricity_today_attempts"] == 3
     # The entry was reloaded with the new settings
-    assert float(hass.states.get(GAS).state) == pytest.approx(1.10 + 0.09 + 0.7)
+    assert float(hass.states.get(GAS).state) == pytest.approx(1.11 + 0.7)
+
+
+@pytest.mark.freeze_time("2026-11-01 03:30:00+00:00")  # 04:30 Amsterdam
+async def test_gas_before_six_uses_previous_gas_day(
+    hass: HomeAssistant, energyzero, addon_entry: MockConfigEntry
+) -> None:
+    """Before 06:00 the gas price of the previous gas day applies."""
+    await _setup(hass, addon_entry)
+    assert float(hass.states.get(GAS).state) == pytest.approx(1.41 + 0.5)
+
+
+async def test_gas_midnight_rollover(
+    hass: HomeAssistant,
+    energyzero,
+    addon_entry: MockConfigEntry,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Gas stays available across midnight and switches price at 06:00."""
+    freezer.move_to("2026-11-01 22:50:00+00:00")  # 23:50 Amsterdam
+    fake, _ = energyzero
+    await _setup(hass, addon_entry)
+    fake.available_days = set()
+
+    freezer.move_to("2026-11-01 23:00:00+00:00")  # 00:00 Amsterdam
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert float(hass.states.get(GAS).state) == pytest.approx(1.11 + 0.5)
+
+    freezer.move_to("2026-11-02 05:00:00+00:00")  # 06:00 Amsterdam
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert float(hass.states.get(GAS).state) == pytest.approx(1.12 + 0.5)
+
+
+@pytest.mark.freeze_time("2026-11-01 14:20:00+00:00")
+async def test_timestamp_only_response(
+    hass: HomeAssistant, energyzero, addon_entry: MockConfigEntry
+) -> None:
+    """Responses without start/end (older EnergyZero versions) still work."""
+    fake, _ = energyzero
+    original = fake.prices
+
+    def without_ranges(service, day):
+        data = original(service, day)
+        for entry in data["prices"]:
+            del entry["start"], entry["end"]
+        return data
+
+    fake.prices = without_ranges
+    await _setup(hass, addon_entry)
+    assert float(hass.states.get(ELEC).state) == pytest.approx(0.45)

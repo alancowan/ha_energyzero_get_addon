@@ -49,7 +49,7 @@
               "tomorrow_attempts": "Pogingen voor prijzen van morgen",
               "retry_delay": "Wachttijd tussen pogingen",
               "tomorrow_after": "Prijzen van morgen ophalen vanaf",
-              "min_entries": "Minimaal aantal prijzen per dag"
+              "min_entries": "Minimaal aantal uren met prijzen"
             },
             "data_description": {
               "offset": "Wordt bij elke prijs opgeteld, in €/kWh (bijv. inkoopvergoeding en energiebelasting van Eneco).",
@@ -59,7 +59,7 @@
               "tomorrow_attempts": "Standaard 4.",
               "retry_delay": "Seconden, standaard 20.",
               "tomorrow_after": "Standaard 14:00.",
-              "min_entries": "Een dag met minder prijzen geldt als onvolledig. Standaard 13."
+              "min_entries": "Een dag geldt als compleet als de prijzen minstens zoveel uren ervan dekken. Standaard 13."
             }
           },
           "gas": {
@@ -70,7 +70,7 @@
               "tomorrow_attempts": "Pogingen voor prijzen van morgen",
               "retry_delay": "Wachttijd tussen pogingen",
               "tomorrow_after": "Prijzen van morgen ophalen vanaf",
-              "min_entries": "Minimaal aantal prijzen per dag"
+              "min_entries": "Minimaal aantal uren met prijzen"
             },
             "data_description": {
               "offset": "Wordt bij elke prijs opgeteld, in €/m³ (bijv. inkoopvergoeding en energiebelasting van Eneco).",
@@ -78,7 +78,7 @@
               "tomorrow_attempts": "Standaard 4.",
               "retry_delay": "Seconden, standaard 20.",
               "tomorrow_after": "Standaard 14:00.",
-              "min_entries": "Een dag met minder prijzen geldt als onvolledig. Standaard 13."
+              "min_entries": "Een dag geldt als compleet als de prijzen minstens zoveel uren ervan dekken. Standaard 13."
             }
           }
         }

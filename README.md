@@ -44,7 +44,10 @@ prices_today:
   ...
 ```
 
-`prices_tomorrow` stays empty until tomorrow's prices are complete. Sensors are
+`prices_tomorrow` stays empty until tomorrow's prices are complete.
+
+Gas prices from EnergyZero are daily and run from 06:00 to 06:00, so the gas
+lists contain the gas days that overlap the calendar day (usually two entries). Sensors are
 unavailable while no complete set of today's prices is known.
 
 ## Settings
@@ -64,7 +67,7 @@ Electricity and gas each have their own section.
 | Attempts for tomorrow's prices | 4 | |
 | Delay between attempts | 20 s | |
 | Fetch tomorrow's prices from | 14:00 | |
-| Minimum number of prices per day | 13 | Fewer prices = incomplete day (the old template used `> 12`) |
+| Minimum hours with prices | 13 | A day is complete when its prices cover at least this many hours (the old template used `> 12` hourly prices) |
 
 ## Behaviour
 

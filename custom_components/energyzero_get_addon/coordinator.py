@@ -49,9 +49,14 @@ FALLBACK_INTERVAL = timedelta(hours=1)
 
 @dataclass(frozen=True, slots=True)
 class PricePoint:
-    """A single price for an interval starting at ``start``."""
+    """A single price valid from ``start`` (inclusive) to ``end`` (exclusive).
+
+    Electricity prices are hourly or quarter-hourly; gas prices are daily and
+    run from 06:00 to 06:00, so a gas day overlaps two calendar days.
+    """
 
     start: datetime
+    end: datetime
     price: float
 
 
@@ -64,35 +69,80 @@ class PriceData:
     last_fetch: datetime | None = None
 
 
+def _parse(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    if (parsed := dt_util.parse_datetime(str(value))) is None:
+        return None
+    return dt_util.as_local(parsed)
+
+
+def build_points(
+    raw: list[tuple[datetime, datetime | None, float]],
+) -> list[PricePoint]:
+    """Sort and de-duplicate prices, filling in missing interval ends.
+
+    Older EnergyZero versions only return a start ``timestamp``; the end is
+    then taken from the next start (or the previous interval length).
+    """
+    by_start = {start: (end, price) for start, end, price in raw}
+    starts = sorted(by_start)
+    points: list[PricePoint] = []
+    for index, start in enumerate(starts):
+        end, price = by_start[start]
+        if end is None or end <= start:
+            if index + 1 < len(starts):
+                end = starts[index + 1]
+            elif index > 0:
+                end = start + (start - starts[index - 1])
+            else:
+                end = start + FALLBACK_INTERVAL
+        points.append(PricePoint(start, end, price))
+    return points
+
+
 def _points_to_json(points: list[PricePoint]) -> list[list[Any]]:
-    return [[point.start.isoformat(), point.price] for point in points]
+    return [
+        [point.start.isoformat(), point.price, point.end.isoformat()]
+        for point in points
+    ]
 
 
 def _points_from_json(raw: Any) -> list[PricePoint]:
-    points: list[PricePoint] = []
+    items: list[tuple[datetime, datetime | None, float]] = []
     if not isinstance(raw, list):
-        return points
+        return []
     for item in raw:
         try:
-            start = dt_util.parse_datetime(str(item[0]))
+            start = _parse(item[0])
             price = float(item[1])
         except (IndexError, TypeError, ValueError):
             continue
+        end = _parse(item[2]) if len(item) > 2 else None
         if start is not None:
-            points.append(PricePoint(dt_util.as_local(start), price))
-    return sorted(points, key=lambda point: point.start)
+            items.append((start, end, price))
+    return build_points(items)
+
+
+def covered_hours(points: list[PricePoint], day: date) -> float:
+    """Return how many hours of the local ``day`` are covered by ``points``."""
+    day_start = dt_util.start_of_local_day(day)
+    day_end = dt_util.start_of_local_day(day + timedelta(days=1))
+    covered = timedelta()
+    cursor = day_start
+    for point in points:
+        start = max(point.start, cursor)
+        end = min(point.end, day_end)
+        if end > start:
+            covered += end - start
+            cursor = end
+    return covered.total_seconds() / 3600
 
 
 def current_point(points: list[PricePoint], now: datetime) -> PricePoint | None:
     """Return the price point whose interval contains ``now``."""
-    for index, point in enumerate(points):
-        if index + 1 < len(points):
-            end = points[index + 1].start
-        elif index > 0:
-            end = point.start + (point.start - points[index - 1].start)
-        else:
-            end = point.start + FALLBACK_INTERVAL
-        if point.start <= now < end:
+    for point in points:
+        if point.start <= now < point.end:
             return point
     return None
 
@@ -133,8 +183,8 @@ class PriceCoordinator(DataUpdateCoordinator[PriceData]):
         return float(self._option(CONF_OFFSET, DEFAULT_OFFSET))
 
     @property
-    def min_entries(self) -> int:
-        """Return the number of entries required for a day to count as valid."""
+    def min_hours(self) -> int:
+        """Return the hours of a day that must have prices for it to be valid."""
         return int(self._option(CONF_MIN_ENTRIES, DEFAULT_MIN_ENTRIES))
 
     @property
@@ -145,8 +195,8 @@ class PriceCoordinator(DataUpdateCoordinator[PriceData]):
     # Validity -------------------------------------------------------------
 
     def is_valid_day(self, points: list[PricePoint], day: date) -> bool:
-        """Return True when ``points`` hold enough prices for ``day``."""
-        return len(points) >= self.min_entries and points[0].start.date() == day
+        """Return True when ``points`` cover enough hours of ``day``."""
+        return covered_hours(points, day) >= self.min_hours
 
     @property
     def today(self) -> list[PricePoint]:
@@ -157,14 +207,9 @@ class PriceCoordinator(DataUpdateCoordinator[PriceData]):
     @property
     def tomorrow(self) -> list[PricePoint]:
         """Return tomorrow's prices, or an empty list when not (yet) available."""
-        today_points = self.today
         tomorrow = dt_util.now().date() + timedelta(days=1)
         points = self.data.tomorrow
-        if (
-            today_points
-            and self.is_valid_day(points, tomorrow)
-            and today_points[-1].start < points[0].start
-        ):
+        if self.today and self.is_valid_day(points, tomorrow):
             return points
         return []
 
@@ -202,7 +247,7 @@ class PriceCoordinator(DataUpdateCoordinator[PriceData]):
         """Promote tomorrow's prices after midnight. Returns True on change."""
         today = dt_util.now().date()
         data = self.data
-        if data.today and data.today[0].start.date() == today:
+        if self.is_valid_day(data.today, today):
             return False
         if self.is_valid_day(data.tomorrow, today):
             self.data = PriceData(data.tomorrow, [], data.last_fetch)
@@ -280,14 +325,14 @@ class PriceCoordinator(DataUpdateCoordinator[PriceData]):
                     err,
                 )
                 continue
-            if len(points) >= self.min_entries:
+            if self.is_valid_day(points, day):
                 return points
             _LOGGER.debug(
-                "Got %s %s prices for %s, need %s (attempt %s/%s)",
-                len(points),
+                "Got %.2f hours of %s prices for %s, need %s (attempt %s/%s)",
+                covered_hours(points, day),
                 self.price_type,
                 day,
-                self.min_entries,
+                self.min_hours,
                 attempt,
                 attempts,
             )
@@ -330,16 +375,21 @@ class PriceCoordinator(DataUpdateCoordinator[PriceData]):
             return_response=True,
         )
 
-        points: dict[datetime, PricePoint] = {}
+        items: list[tuple[datetime, datetime | None, float]] = []
         for entry in (response or {}).get("prices") or []:
             try:
-                start = dt_util.parse_datetime(str(entry["timestamp"]))
+                start = _parse(entry.get("start") or entry["timestamp"])
                 price = float(entry["price"])
-            except (KeyError, TypeError, ValueError):
+            except (AttributeError, KeyError, TypeError, ValueError):
                 continue
-            if start is None:
-                continue
-            start = dt_util.as_local(start)
-            if start.date() == day:
-                points[start] = PricePoint(start, price)
-        return sorted(points.values(), key=lambda point: point.start)
+            if start is not None:
+                items.append((start, _parse(entry.get("end")), price))
+
+        # Keep every price that overlaps the requested local day
+        day_start = dt_util.start_of_local_day(day)
+        day_end = dt_util.start_of_local_day(day + timedelta(days=1))
+        return [
+            point
+            for point in build_points(items)
+            if point.end > day_start and point.start < day_end
+        ]
