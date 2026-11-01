@@ -1,0 +1,30 @@
+{
+  "entity": {
+    "button": {
+      "refresh": {
+        "default": "mdi:refresh"
+      }
+    },
+    "number": {
+      "electricity_offset": {
+        "default": "mdi:cash-plus"
+      },
+      "gas_offset": {
+        "default": "mdi:cash-plus"
+      }
+    },
+    "sensor": {
+      "electricity_price": {
+        "default": "mdi:flash"
+      },
+      "gas_price": {
+        "default": "mdi:fire"
+      }
+    }
+  },
+  "services": {
+    "refresh": {
+      "service": "mdi:cloud-refresh"
+    }
+  }
+}

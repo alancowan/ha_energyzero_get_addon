@@ -1,0 +1,15 @@
+{
+  "domain": "energyzero_get_addon",
+  "name": "Energy Zero Get Addon",
+  "codeowners": [
+    "@alancowan"
+  ],
+  "config_flow": true,
+  "dependencies": ["energyzero"],
+  "documentation": "https://github.com/alancowan/ha_energyzero_get_addon",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/alancowan/ha_energyzero_get_addon/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

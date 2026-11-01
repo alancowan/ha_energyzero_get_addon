@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Energy Zero Get Addon",
+        "description": "Telt een leveranciersopslag op bij de day-ahead prijzen van EnergyZero. Pogingen en tijden kun je daarna aanpassen via Configureren.",
+        "data": {
+          "energyzero_entry_id": "EnergyZero-integratie",
+          "electricity_offset": "Opslag leverancier elektriciteit",
+          "gas_offset": "Opslag leverancier gas"
+        },
+        "data_description": {
+          "energyzero_entry_id": "De EnergyZero-configuratie waarmee prijzen worden opgehaald.",
+          "electricity_offset": "Wordt bij elke stroomprijs opgeteld, in €/kWh.",
+          "gas_offset": "Wordt bij elke gasprijs opgeteld, in €/m³."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Deze EnergyZero-configuratie wordt al gebruikt.",
+      "no_energyzero": "Stel eerst de EnergyZero-integratie in."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Energy Zero Get Addon",
+        "sections": {
+          "general": {
+            "name": "Algemeen",
+            "data": {
+              "incl_vat": "Prijzen inclusief btw",
+              "refresh_minute": "Verversminuut",
+              "startup_delay": "Vertraging bij opstarten"
+            },
+            "data_description": {
+              "incl_vat": "Standaard aan.",
+              "refresh_minute": "Ontbrekende prijzen worden elk uur op deze minuut opgehaald. Standaard 7.",
+              "startup_delay": "Seconden wachten na het opstarten van Home Assistant. Standaard 45."
+            }
+          },
+          "electricity": {
+            "name": "Elektriciteit",
+            "data": {
+              "offset": "Opslag leverancier",
+              "price_type": "Prijstype",
+              "interval": "Prijsinterval",
+              "today_attempts": "Pogingen voor prijzen van vandaag",
+              "tomorrow_attempts": "Pogingen voor prijzen van morgen",
+              "retry_delay": "Wachttijd tussen pogingen",
+              "tomorrow_after": "Prijzen van morgen ophalen vanaf",
+              "min_entries": "Minimaal aantal prijzen per dag"
+            },
+            "data_description": {
+              "offset": "Wordt bij elke prijs opgeteld, in €/kWh (bijv. inkoopvergoeding en energiebelasting van Eneco).",
+              "price_type": "Marktprijs, of de all-in prijs van EnergyZero.",
+              "interval": "Prijzen per uur of per kwartier.",
+              "today_attempts": "Standaard 5.",
+              "tomorrow_attempts": "Standaard 4.",
+              "retry_delay": "Seconden, standaard 20.",
+              "tomorrow_after": "Standaard 14:00.",
+              "min_entries": "Een dag met minder prijzen geldt als onvolledig. Standaard 13."
+            }
+          },
+          "gas": {
+            "name": "Gas",
+            "data": {
+              "offset": "Opslag leverancier",
+              "today_attempts": "Pogingen voor prijzen van vandaag",
+              "tomorrow_attempts": "Pogingen voor prijzen van morgen",
+              "retry_delay": "Wachttijd tussen pogingen",
+              "tomorrow_after": "Prijzen van morgen ophalen vanaf",
+              "min_entries": "Minimaal aantal prijzen per dag"
+            },
+            "data_description": {
+              "offset": "Wordt bij elke prijs opgeteld, in €/m³ (bijv. inkoopvergoeding en energiebelasting van Eneco).",
+              "today_attempts": "Standaard 5.",
+              "tomorrow_attempts": "Standaard 4.",
+              "retry_delay": "Seconden, standaard 20.",
+              "tomorrow_after": "Standaard 14:00.",
+              "min_entries": "Een dag met minder prijzen geldt als onvolledig. Standaard 13."
+            }
+          }
+        }
+      }
+    }
+  },
+  "selector": {
+    "price_type": {
+      "options": {
+        "market": "Marktprijs",
+        "all_in": "All-in prijs"
+      }
+    },
+    "interval": {
+      "options": {
+        "hour": "Uur",
+        "quarter": "Kwartier"
+      }
+    },
+    "refresh_price_type": {
+      "options": {
+        "electricity": "Elektriciteit",
+        "gas": "Gas"
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Prijzen verversen"
+      }
+    },
+    "number": {
+      "electricity_offset": {
+        "name": "Opslag elektriciteit"
+      },
+      "gas_offset": {
+        "name": "Opslag gas"
+      }
+    },
+    "sensor": {
+      "electricity_price": {
+        "name": "Stroomprijs",
+        "state_attributes": {
+          "prices_today": {
+            "name": "Prijzen vandaag"
+          },
+          "prices_tomorrow": {
+            "name": "Prijzen morgen"
+          }
+        }
+      },
+      "gas_price": {
+        "name": "Gasprijs",
+        "state_attributes": {
+          "prices_today": {
+            "name": "Prijzen vandaag"
+          },
+          "prices_tomorrow": {
+            "name": "Prijzen morgen"
+          }
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "no_loaded_entry": {
+      "message": "Geen geladen Energy Zero Get Addon-configuratie gevonden."
+    }
+  },
+  "services": {
+    "refresh": {
+      "name": "Prijzen verversen",
+      "description": "Haal de prijzen van vandaag (en na de ingestelde tijd van morgen) opnieuw op.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Configuratie",
+          "description": "Leeg laten om alles te verversen."
+        },
+        "price_type": {
+          "name": "Prijstype",
+          "description": "Leeg laten om stroom en gas te verversen."
+        }
+      }
+    }
+  }
+}

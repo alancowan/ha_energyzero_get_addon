@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Energy Zero Get Addon",
+        "description": "Adds a provider offset to the EnergyZero day-ahead prices. Retries and schedules can be changed afterwards via Configure.",
+        "data": {
+          "energyzero_entry_id": "EnergyZero integration",
+          "electricity_offset": "Electricity provider offset",
+          "gas_offset": "Gas provider offset"
+        },
+        "data_description": {
+          "energyzero_entry_id": "The EnergyZero config entry used to fetch prices.",
+          "electricity_offset": "Added to every electricity price, in €/kWh.",
+          "gas_offset": "Added to every gas price, in €/m³."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This EnergyZero entry is already used.",
+      "no_energyzero": "Set up the EnergyZero integration first."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Energy Zero Get Addon",
+        "sections": {
+          "general": {
+            "name": "General",
+            "data": {
+              "incl_vat": "Prices including VAT",
+              "refresh_minute": "Refresh minute",
+              "startup_delay": "Startup delay"
+            },
+            "data_description": {
+              "incl_vat": "Default on.",
+              "refresh_minute": "Missing prices are fetched every hour at this minute. Default 7.",
+              "startup_delay": "Seconds to wait after Home Assistant starts before fetching. Default 45."
+            }
+          },
+          "electricity": {
+            "name": "Electricity",
+            "data": {
+              "offset": "Provider offset",
+              "price_type": "Price type",
+              "interval": "Price interval",
+              "today_attempts": "Attempts for today's prices",
+              "tomorrow_attempts": "Attempts for tomorrow's prices",
+              "retry_delay": "Delay between attempts",
+              "tomorrow_after": "Fetch tomorrow's prices from",
+              "min_entries": "Minimum number of prices per day"
+            },
+            "data_description": {
+              "offset": "Added to every price, in €/kWh (e.g. Eneco's purchase fee and energy tax).",
+              "price_type": "Market price, or EnergyZero's all-in price.",
+              "interval": "Hourly or quarter-hourly prices.",
+              "today_attempts": "Default 5.",
+              "tomorrow_attempts": "Default 4.",
+              "retry_delay": "Seconds, default 20.",
+              "tomorrow_after": "Default 14:00.",
+              "min_entries": "A day with fewer prices is treated as incomplete. Default 13."
+            }
+          },
+          "gas": {
+            "name": "Gas",
+            "data": {
+              "offset": "Provider offset",
+              "today_attempts": "Attempts for today's prices",
+              "tomorrow_attempts": "Attempts for tomorrow's prices",
+              "retry_delay": "Delay between attempts",
+              "tomorrow_after": "Fetch tomorrow's prices from",
+              "min_entries": "Minimum number of prices per day"
+            },
+            "data_description": {
+              "offset": "Added to every price, in €/m³ (e.g. Eneco's purchase fee and energy tax).",
+              "today_attempts": "Default 5.",
+              "tomorrow_attempts": "Default 4.",
+              "retry_delay": "Seconds, default 20.",
+              "tomorrow_after": "Default 14:00.",
+              "min_entries": "A day with fewer prices is treated as incomplete. Default 13."
+            }
+          }
+        }
+      }
+    }
+  },
+  "selector": {
+    "price_type": {
+      "options": {
+        "market": "Market price",
+        "all_in": "All-in price"
+      }
+    },
+    "interval": {
+      "options": {
+        "hour": "Hour",
+        "quarter": "Quarter hour"
+      }
+    },
+    "refresh_price_type": {
+      "options": {
+        "electricity": "Electricity",
+        "gas": "Gas"
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Refresh prices"
+      }
+    },
+    "number": {
+      "electricity_offset": {
+        "name": "Electricity offset"
+      },
+      "gas_offset": {
+        "name": "Gas offset"
+      }
+    },
+    "sensor": {
+      "electricity_price": {
+        "name": "Electricity price",
+        "state_attributes": {
+          "prices_today": {
+            "name": "Prices today"
+          },
+          "prices_tomorrow": {
+            "name": "Prices tomorrow"
+          }
+        }
+      },
+      "gas_price": {
+        "name": "Gas price",
+        "state_attributes": {
+          "prices_today": {
+            "name": "Prices today"
+          },
+          "prices_tomorrow": {
+            "name": "Prices tomorrow"
+          }
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "no_loaded_entry": {
+      "message": "No loaded Energy Zero Get Addon entry found."
+    }
+  },
+  "services": {
+    "refresh": {
+      "name": "Refresh prices",
+      "description": "Fetch today's (and after the configured time, tomorrow's) prices again.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Config entry",
+          "description": "Leave empty to refresh all entries."
+        },
+        "price_type": {
+          "name": "Price type",
+          "description": "Leave empty to refresh electricity and gas."
+        }
+      }
+    }
+  }
+}
